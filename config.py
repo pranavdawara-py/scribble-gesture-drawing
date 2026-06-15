@@ -43,7 +43,6 @@ def load() -> dict[str, Any]:
     """Load config.json, self-healing any missing/invalid keys."""
     data: dict[str, Any] = {}
     if CONFIG_PATH.exists():
-        print("config.json exists")
         try:
             data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
             if not isinstance(data, dict):
