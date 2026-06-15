@@ -11,10 +11,6 @@ Writing hand gestures (hold 0.7s):
 
 In DRAW + preview_mode: pinky/fist commits stroke, both_palms discards.
 
-Control hand gestures (hold 0.7s):
-  IMR  → start recording
-  palm → stop recording / stop playback
-  V    → start playback
 """
 
 from __future__ import annotations
@@ -182,7 +178,7 @@ def run() -> None:
     ema       = EMA(cfg["ema_alpha"])
 
     # last_index: EMA-smoothed normalised finger position from previous frame.
-    # Used to compute deltas. Also used by recording — single source of truth.
+    # Used to compute deltas.
     last_index: tuple[float, float] | None = None
 
     # Preview stroke buffer: (dx_px, dy_px) sensitivity-scaled screen pixel deltas
@@ -285,18 +281,17 @@ def run() -> None:
             elif wh_v.update(bool(wp and wp.index_middle)) and mode in (Mode.IDLE,Mode.DRAW):
                 _enter_move(); print("[W]→MOVE")
 
-            # ── Delta computation — ONE place, used by everything ─────────────
+            # ── Delta computation — ONE place, used by cursor and preview
             # dx_px/dy_px = sensitivity-scaled screen pixel delta.
             # Relative to last_index (previous frame's EMA position).
-            # Used for: cursor movement, preview buffer, recording.
-            dx_px=dy_px=0.0; moved=False
+            # Used for: cursor movement, preview buffer.
+            dx_px=dy_px=0.0
 
             if wp and (wp.index_only or wp.index_middle) and mode in (Mode.DRAW, Mode.MOVE):
                 sx,sy = ema.update(wx,wy)
                 if last_index is not None:
                     dx_px = (sx - last_index[0]) * sens * scale_w
                     dy_px = (sy - last_index[1]) * sens * scale_h
-                    moved = True
 
                     # ── Cursor / preview buffer ───────────────────────────────
                     if mode==Mode.MOVE:
