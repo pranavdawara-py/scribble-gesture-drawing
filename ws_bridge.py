@@ -4,17 +4,15 @@ See SPEC_websocket.md for the full message contract.
 
 The main loop calls `broadcast_state()` every frame.
 The website sends JSON commands which are queued for main loop consumption.
-Recognized commands are applied here (config mutations, recording
-save/discard); side effects requiring state-machine access (resets,
-buffer clears, replay selection, virtual background frame application)
-are read back by main.py via `pop_commands()`.
+Recognized commands are applied here (config mutations); side effects
+requiring state-machine access (resets, buffer clears, virtual background
+frame application) are read back by main.py via `pop_commands()`.
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
-import shutil
 import threading
 import uuid
 from pathlib import Path
@@ -29,13 +27,6 @@ try:
 except ImportError:
     pass
 
-# Imported at module level so FastAPI's route registration can resolve
-# UploadFile correctly. Importing inside _run_http_server causes FastAPI
-# to treat the parameter as a query param, returning 422 on every upload.
-try:
-    from fastapi import File, UploadFile
-except ImportError:
-    pass
 
 BACKGROUNDS_DIR = Path(__file__).resolve().parent / "backgrounds"
 
