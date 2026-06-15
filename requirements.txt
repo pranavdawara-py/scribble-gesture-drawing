@@ -1,0 +1,7 @@
+opencv-python
+mediapipe==0.10.14
+numpy
+fastapi
+uvicorn[standard]
+wsproto
+python-multipart

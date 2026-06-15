@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Scribble — Control Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Source+Serif+4:opsz@8..60&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/*
+  Design direction: this is a sketching/drawing companion, viewed at a
+  glance while the user looks at another screen — so it's a warm paper
+  surface, not a tech dashboard. Mode labels and the hand visualizer use
+  a monospace "field notes" voice (JetBrains Mono); headings use Space
+  Grotesk (a confident grotesque with a sketch-friendly geometric feel);
+  body copy uses Source Serif 4 for a calmer, "instructional booklet"
+  read. One ink accent (marker red) marks active/DRAW state; sage marks
+  MOVE; warm clay marks IDLE. Cards are flat "cue cards" with a hairline
+  border and a soft paper shadow, very slightly rotated to feel placed
+  rather than generated.
+*/
+:root {
+  --paper:      #F6F1E7;
+  --paper-deep: #EFE7D8;
+  --card:       #FFFDF8;
+  --ink:        #2B2A33;
+  --ink-soft:   #5B5868;
+  --line:       #DDD3C0;
+  --line-soft:  #E8E0D0;
+
+  --accent-draw: #D6603A;  /* marker red - DRAW / active */
+  --accent-move: #5E8C73;  /* sage - MOVE */
+  --accent-idle: #A79D8C;  /* clay - IDLE */
+  --accent-rec:  #C24545;  /* recording red */
+  --accent-info: #4A6FA5;  /* connection / info blue */
+  --accent-amber:#C98A2B;  /* awaiting / hint amber */
+
+  --radius: 14px;
+  --shadow: 0 2px 0 rgba(43,42,51,0.04), 0 8px 24px -12px rgba(43,42,51,0.18);
+
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body:    'Source Serif 4', Georgia, serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { min-height: 100vh; }
+
+body {
+  background: var(--paper);
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(43,42,51,0.035) 1px, transparent 0);
+  background-size: 22px 22px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  width: 34px; height: 34px;
+  flex-shrink: 0;
+}
+
+header h1 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+header .tagline {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  letter-spacing: 0.02em;
+}
+
+.connection {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+
+.connection-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent-idle);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.connection.connected .connection-dot {
+  background: var(--accent-move);
+  box-shadow: 0 0 0 3px rgba(94,140,115,0.18);
+}
+
+.connection.error .connection-dot {
+  background: var(--accent-rec);
+  box-shadow: 0 0 0 3px rgba(194,69,69,0.18);
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────── */
+main {
+  flex: 1;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 28px 60px;
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 22px;
+  align-items: start;
+}
+
+.hero {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 22px;
+}
+
+.panels {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr; padding: 18px 16px 48px; }
+  .hero { grid-template-columns: 1fr; }
+  .panels { grid-template-columns: 1fr; }
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.card h2 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card .card-sub {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+}
+
+/* ── Status card ────────────────────────────────────────────────────── */
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+  margin-bottom: 10px;
+}
+
+.mode-badge.idle { color: var(--accent-idle); }
+.mode-badge.draw { color: var(--accent-draw); }
+.mode-badge.move { color: var(--accent-move); }
+
+.mode-desc {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  margin-bottom: 16px;
+}
+
+.status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.status-chip {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-chip.active.rec { color: var(--accent-rec); border-color: var(--accent-rec); }
+.status-chip.active.play { color: var(--accent-info); border-color: var(--accent-info); }
+
+.rec-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent-rec);
+}
+.status-chip.active.rec .rec-dot {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+
+/* Stroke-in-progress hint chip */
+.stroke-hint {
+  margin-top: 12px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #FBF1E4;
+  border: 1px dashed var(--accent-amber);
+  color: #8A5C18;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity 0.25s ease, max-height 0.25s ease, padding 0.25s ease, margin 0.25s ease;
+}
+.stroke-hint.visible {
+  opacity: 1;
+  max-height: 60px;
+  padding: 9px 12px;
+}
+
+/* ── Hand visualizer (signature element) ───────────────────────────────── */
+.visualizer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.hands-row {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  width: 100%;
+}
+
+.hand-block {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 8px;
+  border-radius: 10px;
+  background: var(--paper-deep);
+  border: 1px solid var(--line-soft);
+}
+
+.hand-block svg {
+  width: 100%;
+  max-width: 130px;
+  height: auto;
+  transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+}
+
+.hand-block.pulse svg {
+  transform: scale(1.06);
+}
+
+.hand-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.pose-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.finger {
+  transition: fill 0.2s ease, opacity 0.2s ease;
+}
+
+/* ── Settings ───────────────────────────────────────────────────────── */
+.field {
+  margin-bottom: 16px;
+}
+
+.field:last-child { margin-bottom: 0; }
+
+.field-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  font-family: var(--font-display);
+}
+
+.field-sub {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+
+.value-badge {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent-draw);
+}
+
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+
+/* Toggle switch */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.switch input {
+  opacity: 0;
+  width: 100%; height: 100%;
+  margin: 0;
+  cursor: pointer;
+  position: absolute;
+  z-index: 1;
+}
+.switch .track {
+  position: absolute;
+  inset: 0;
+  background: var(--line);
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+.switch .thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 20px; height: 20px;
+  background: var(--card);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease;
+}
+.switch input:checked ~ .track { background: var(--accent-draw); }
+.switch input:checked ~ .thumb { transform: translateX(20px); }
+.switch input:focus-visible ~ .track { outline: 2px solid var(--accent-info); outline-offset: 2px; }
+
+/* Hand toggle (Left/Right segmented) */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+.segmented button {
+  border: none;
+  background: var(--card);
+  color: var(--ink-soft);
+  padding: 6px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+}
+.segmented button.active {
+  background: var(--accent-draw);
+  color: var(--card);
+  font-weight: 600;
+}
+.segmented button:focus-visible {
+  outline: 2px solid var(--accent-info);
+  outline-offset: -2px;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+button {
+  font-family: var(--font-display);
+  cursor: pointer;
+}
+
+.btn {
+  border: 1.5px solid var(--ink);
+  background: var(--card);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+.btn:hover { background: var(--ink); color: var(--card); }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--accent-info); outline-offset: 2px; }
+
+.btn.primary {
+  border-color: var(--accent-draw);
+  background: var(--accent-draw);
+  color: var(--card);
+}
+.btn.primary:hover { background: #B6502E; border-color: #B6502E; }
+.btn.primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn.primary:disabled:hover { background: var(--accent-draw); }
+
+.btn.ghost {
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+.btn.ghost:hover { background: var(--paper-deep); color: var(--ink); }
+
+.btn.small {
+  padding: 5px 12px;
+  font-size: 0.75rem;
+}
+
+/* ── Recordings grid ────────────────────────────────────────────────── */
+.recordings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.recordings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.recording-card {
+  border: 1px solid var(--line);
+  background: var(--paper-deep);
+  border-radius: 10px;
+  padding: 12px 10px;
+  text-align: center;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  word-break: break-word;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.recording-card:hover { border-color: var(--accent-draw); }
+.recording-card:focus-visible {
+  outline: 2px solid var(--accent-info);
+  outline-offset: 2px;
+}
+.recording-card.selected {
+  border-color: var(--accent-draw);
+  background: #FBEFE9;
+  color: var(--accent-draw);
+  font-weight: 600;
+}
+.recording-card .rec-icon {
+  font-size: 1.4rem;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.recordings-empty {
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+.recordings-empty .rec-icon { font-size: 2rem; display: block; margin-bottom: 8px; }
+
+.recordings-hint {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.recordings-hint strong { color: var(--ink); }
+
+/* ── Gesture guide ──────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.tab {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 4px 10px;
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  border-bottom: 2px solid transparent;
+  margin-right: 14px;
+}
+.tab.active {
+  color: var(--ink);
+  border-bottom-color: var(--accent-draw);
+}
+.tab:focus-visible { outline: 2px solid var(--accent-info); outline-offset: 2px; }
+
+.gesture-list { display: flex; flex-direction: column; gap: 10px; }
+.gesture-list.hidden { display: none; }
+
+.gesture-item {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.gesture-emoji {
+  font-size: 1.6rem;
+  text-align: center;
+}
+
+.gesture-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gesture-tag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border-radius: 6px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+}
+
+.gesture-desc {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+.gesture-when {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--accent-info);
+  margin-top: 3px;
+}
+
+.ml-only-group {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+}
+.ml-only-group .group-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-amber);
+  margin-bottom: 8px;
+}
+
+/* ── Virtual background ────────────────────────────────────────────── */
+.bg-preview {
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--paper-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 12px;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 12px;
+}
+.bg-preview img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+
+.file-input-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.file-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.help-text {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin-top: 10px;
+}
+
+/* ── Save popup ─────────────────────────────────────────────────────── */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(43,42,51,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.popup-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.popup {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: 0 20px 60px -20px rgba(43,42,51,0.4);
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+  transform: translateY(10px) scale(0.98);
+  transition: transform 0.2s ease;
+}
+.popup-overlay.open .popup {
+  transform: translateY(0) scale(1);
+}
+
+.popup h2 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin-bottom: 6px;
+}
+.popup p {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+}
+.popup input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  background: var(--paper);
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+.popup input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent-draw);
+}
+.popup-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+footer {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  padding: 18px;
+  border-top: 1px solid var(--line);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="17" cy="17" r="16" stroke="#2B2A33" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <path d="M10 22C12 16 15 12 19 12C22 12 21 16 18 17C15 18 14 21 17 22C20 23 23 21 24 18"
+            stroke="#D6603A" stroke-width="2" stroke-linecap="round" fill="none"/>
+      <circle cx="24" cy="18" r="1.6" fill="#D6603A"/>
+    </svg>
+    <div>
+      <h1>Scribble</h1>
+      <div class="tagline">gesture-controlled drawing</div>
+    </div>
+  </div>
+  <div class="connection" id="connectionStatus">
+    <span class="connection-dot"></span>
+    <span id="connectionLabel">Connecting…</span>
+  </div>
+</header>
+
+<main>
+  <!-- ============ HERO: Live Status + Hand Visualizer (Section A) ============ -->
+  <section class="hero">
+    <div class="card" id="statusCard">
+      <h2>Live status</h2>
+      <p class="card-sub">What Scribble sees and does right now.</p>
+
+      <span class="mode-badge idle" id="modeBadge">Idle</span>
+      <p class="mode-desc" id="modeDesc">Hold three fingers to start drawing, or a peace sign to move the cursor.</p>
+
+
+      <div class="stroke-hint" id="strokeHint">
+        ✏️ Stroke ready — show <strong>Pinky</strong> or <strong>Fist</strong> to draw, or <strong>both palms</strong> to cancel
+      </div>
+    </div>
+
+    <div class="card visualizer">
+      <h2>Hand pose</h2>
+      <p class="card-sub">Live read of both hands, fingers lit when extended.</p>
+      <div class="hands-row">
+        <div class="hand-block" id="writingHandBlock">
+          <span class="hand-label" id="writingHandLabel">Drawing hand (Right)</span>
+          <div id="writingHandSvg"></div>
+          <span class="pose-name" id="writingPoseName">No hand detected</span>
+        </div>
+        <div class="hand-block" id="controlHandBlock">
+          <span class="hand-label" id="controlHandLabel">Control hand (Left)</span>
+          <div id="controlHandSvg"></div>
+          <span class="pose-name" id="controlPoseName">No hand detected</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SECONDARY PANELS ============ -->
+  <section class="panels">
+
+    <!-- Settings (Section C) -->
+    <div class="card" id="settingsCard">
+      <h2>Settings</h2>
+      <p class="card-sub">Changes apply immediately and are saved automatically.</p>
+
+      <div class="field">
+        <div class="toggle-row">
+          <div>
+            <div class="field-label" style="margin-bottom:2px;">Drawing hand</div>
+            <div class="field-sub" style="margin-bottom:0;">Which hand draws — the other becomes your control hand.</div>
+          </div>
+          <div class="segmented" id="writingHandToggle" role="group" aria-label="Drawing hand">
+            <button type="button" data-hand="Left" id="handLeftBtn">Left ✍️</button>
+            <button type="button" data-hand="Right" id="handRightBtn">Right ✍️</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="toggle-row">
+          <div>
+            <div class="field-label" style="margin-bottom:2px;">Show drawing on camera first</div>
+            <div class="field-sub" style="margin-bottom:0;">Preview your stroke on camera first, then commit it or cancel with a gesture.</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="mlModeToggle" aria-label="Show drawing on camera before drawing">
+            <span class="track"></span>
+            <span class="thumb"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">
+          <span>Cursor speed</span>
+          <span class="value-badge" id="sensitivityValue">0.75</span>
+        </div>
+        <input type="range" id="sensitivitySlider" min="0.5" max="5.0" step="0.25" value="0.75">
+        <div class="range-labels"><span>Slow</span><span>Fast</span></div>
+        <p class="help-text" id="sensitivityMlHint" style="display:none;margin-top:8px;">
+          ✏️ Also scales AI Preview strokes — draw big in the air, then lower this to shrink it on screen.
+        </p>
+      </div>
+
+      <div class="field">
+        <div class="field-label">
+          <span>Smoothing</span>
+          <span class="value-badge" id="emaValue">0.40</span>
+        </div>
+        <input type="range" id="emaSlider" min="0.1" max="1.0" step="0.05" value="0.40">
+        <div class="range-labels"><span>Buttery smooth</span><span>Instant response</span></div>
+      </div>
+    </div>
+
+
+    <!-- Gesture Guide (Section E) -->
+    <div class="card" id="gestureGuideCard">
+      <h2>Gesture guide</h2>
+      <p class="card-sub">Your physical vocabulary for controlling Scribble.</p>
+
+
+      <div class="gesture-list" id="writingGestures">
+        <div class="gesture-item">
+          <div class="gesture-emoji" style="font-size:1.1rem;line-height:1.8;">3️⃣</div>
+          <div>
+            <div class="gesture-title">Three fingers — index + middle + ring <span class="gesture-tag">hold 0.7s</span></div>
+            <div class="gesture-desc">Enter Draw mode.</div>
+            <div class="gesture-when">Works from Idle or Move</div>
+          </div>
+        </div>
+        <div class="gesture-item">
+          <div class="gesture-emoji">✌️</div>
+          <div>
+            <div class="gesture-title">Peace sign <span class="gesture-tag">hold 0.7s</span></div>
+            <div class="gesture-desc">Enter Move mode — reposition the cursor without drawing.</div>
+            <div class="gesture-when">Works from Idle or Draw</div>
+          </div>
+        </div>
+        <div class="gesture-item">
+          <div class="gesture-emoji">☝️</div>
+          <div>
+            <div class="gesture-title">Index finger</div>
+            <div class="gesture-desc">Move the cursor. Draws too, if you're in Draw mode.</div>
+            <div class="gesture-when">Works in Draw or Move</div>
+          </div>
+        </div>
+        <div class="gesture-item">
+          <div class="gesture-emoji">🖐️</div>
+          <div>
+            <div class="gesture-title">Open palm <span class="gesture-tag">hold 0.7s</span></div>
+            <div class="gesture-desc">Back to Idle — stop drawing or moving completely.</div>
+            <div class="gesture-when">Works from Draw or Move</div>
+          </div>
+        </div>
+
+        <div class="ml-only-group" id="mlGestureGroup">
+          <div class="group-label">While drawing, with Preview on — any time, no need to pause</div>
+          <div class="gesture-item">
+            <div class="gesture-emoji" style="font-size:1.1rem;line-height:1.8;">🤙<br><small style="font-size:0.6rem;color:var(--ink-soft)">(pinky only)</small></div>
+            <div>
+              <div class="gesture-title">Pinky <span class="gesture-tag">instant</span></div>
+              <div class="gesture-desc">Draw the stroke (shape suggestion — coming soon).</div>
+              <div class="gesture-when">Works any time mid-stroke</div>
+            </div>
+          </div>
+          <div class="gesture-item">
+            <div class="gesture-emoji">✊</div>
+            <div>
+              <div class="gesture-title">Fist <span class="gesture-tag">instant</span></div>
+              <div class="gesture-desc">Draw exactly the stroke you made.</div>
+              <div class="gesture-when">Works any time mid-stroke</div>
+            </div>
+          </div>
+          <div class="gesture-item">
+            <div class="gesture-emoji">🙌</div>
+            <div>
+              <div class="gesture-title">Both palms open <span class="gesture-tag">instant</span></div>
+              <div class="gesture-desc">Cancel the stroke — nothing gets drawn.</div>
+              <div class="gesture-when">Works any time mid-stroke</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+
+    <!-- Virtual Background (Section F) -->
+    <div class="card" id="backgroundCard">
+      <h2>Virtual background</h2>
+      <p class="card-sub">Upload an image or video to replace everything except your hands — useful for recording demos without showing your space.</p>
+
+      <div class="bg-preview" id="bgPreview">No background set — your camera shows normally</div>
+
+      <div class="file-input-row">
+        <label class="btn ghost small file-label">
+          Choose image or video
+          <input type="file" id="bgFileInput" accept="image/jpeg,image/png,video/mp4,video/webm,video/quicktime,.avi,.mkv" style="display:none;">
+        </label>
+        <button class="btn ghost small" id="removeBgBtn" type="button">Remove background</button>
+      </div>
+
+      <p class="help-text">Expect a rough edge around your hand — this isn't a precise green-screen, just enough to hide your face and room.</p>
+    </div>
+
+  </section>
+</main>
+
+
+<footer>
+  Scribble — keep this tab open while the app is running
+</footer>
+
+<script>
+// ── Hand SVG ─────────────────────────────────────────────────────────────
+// Simple stylized hand: palm + 5 fingers as rounded rects. Each finger
+// gets a `.finger` class + data-finger name so we can light it up.
+// thumb is always drawn dim (poses in this app don't track thumb state).
+function handSVG() {
+  return `
+  <svg viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect x="30" y="60" width="60" height="60" rx="18" fill="var(--line-soft)" stroke="var(--line)" stroke-width="1.5"/>
+    <rect class="finger" data-finger="thumb"  x="14" y="68" width="18" height="34" rx="9"  fill="var(--line-soft)" stroke="var(--line)" stroke-width="1.5" opacity="0.55" transform="rotate(-35 23 85)"/>
+    <rect class="finger" data-finger="index"  x="34" y="14" width="16" height="56" rx="8" fill="var(--line-soft)" stroke="var(--line)" stroke-width="1.5"/>
+    <rect class="finger" data-finger="middle" x="53" y="6"  width="16" height="64" rx="8" fill="var(--line-soft)" stroke="var(--line)" stroke-width="1.5"/>
+    <rect class="finger" data-finger="ring"   x="72" y="12" width="16" height="58" rx="8" fill="var(--line-soft)" stroke="var(--line)" stroke-width="1.5"/>
+    <rect class="finger" data-finger="pinky"  x="90" y="26" width="15" height="44" rx="7.5" fill="var(--line-soft)" stroke="var(--line)" stroke-width="1.5"/>
+  </svg>`;
+}
+
+document.getElementById('writingHandSvg').innerHTML = handSVG();
+document.getElementById('controlHandSvg').innerHTML = handSVG();
+
+// Which fingers light up for each detected pose name
+const POSE_FINGERS = {
+  open_palm:  ['index','middle','ring','pinky'],
+  fist:       [],
+  index:      ['index'],
+  V:          ['index','middle'],
+  IMR:        ['index','middle','ring'],
+  pinky:      ['pinky'],
+  none:       [],
+  other:      [],
+};
+
+const POSE_LABELS = {
+  open_palm: 'Open palm',
+  fist:      'Fist',
+  index:     'Pointing',
+  V:         'Peace sign',
+  IMR:       'Three fingers',
+  pinky:     'Pinky',
+  none:      'No hand detected',
+  other:     'Other',
+};
+
+const ACTIVE_FILL = '#D6603A';
+
+function applyHandPose(blockEl, svgWrapId, labelEl, poseName, prevPose) {
+  const svg = blockEl.querySelector('svg');
+  const lit = POSE_FINGERS[poseName] || [];
+  svg.querySelectorAll('.finger').forEach(f => {
+    const name = f.dataset.finger;
+    const on = lit.includes(name);
+    f.style.fill = on ? ACTIVE_FILL : 'var(--line-soft)';
+    f.style.opacity = on ? '1' : (name === 'thumb' ? '0.55' : '0.85');
+  });
+  labelEl.textContent = POSE_LABELS[poseName] || POSE_LABELS.other;
+
+  if (poseName !== prevPose) {
+    blockEl.classList.remove('pulse');
+    // restart animation
+    requestAnimationFrame(() => {
+      blockEl.classList.add('pulse');
+      setTimeout(() => blockEl.classList.remove('pulse'), 260);
+    });
+  }
+}
+
+// ── Mode copy (Section A table) ─────────────────────────────────────────
+const MODE_INFO = {
+  IDLE: { label: 'Idle', cls: 'idle', desc: 'Hold three fingers to start drawing, or a peace sign to move the cursor.' },
+  DRAW: { label: 'Drawing', cls: 'draw', desc: 'Move your index finger to draw. Show a peace sign to switch to Move mode.' },
+  MOVE: { label: 'Moving cursor', cls: 'move', desc: 'Point your index finger to reposition. Hold three fingers to go back to Draw mode.' },
+};
+
+// ── State ──────────────────────────────────────────────────────────────
+let ws = null;
+let lastWritingPose = null;
+let lastControlPose = null;
+let currentState = {
+  writing_hand: 'Right',
+  sensitivity: 0.35,
+  ema_alpha: 0.40,
+  ml_mode: false,
+  virtual_background: null,
+
+  stroke_active: false,
+};
+
+
+// ── WebSocket connection ──────────────────────────────────────────────
+const connStatus = document.getElementById('connectionStatus');
+const connLabel  = document.getElementById('connectionLabel');
+
+function setConnState(state) {
+  connStatus.classList.remove('connected', 'error');
+  if (state === 'connected') {
+    connStatus.classList.add('connected');
+    connLabel.textContent = 'Connected';
+  } else if (state === 'error') {
+    connStatus.classList.add('error');
+    connLabel.textContent = 'Error';
+  } else {
+    connLabel.textContent = 'Disconnected';
+  }
+}
+
+function connect() {
+  // WS runs on HTTP port + 1 (uvicorn's built-in WS backend is broken; we
+  // use a separate websockets-library server on a dedicated port).
+  const httpPort = parseInt(location.port, 10) || 8765;
+  const wsUrl    = `ws://${location.hostname}:${httpPort + 1}`;
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch (e) {
+    setConnState('error');
+    scheduleReconnect();
+    return;
+  }
+
+  ws.onopen = () => setConnState('connected');
+
+  ws.onmessage = (evt) => {
+    let s;
+    try { s = JSON.parse(evt.data); } catch (e) { return; }
+    handleState(s);
+  };
+
+  ws.onclose = () => {
+    setConnState('disconnected');
+    scheduleReconnect();
+  };
+
+  ws.onerror = () => {
+    setConnState('error');
+    scheduleReconnect();
+  };
+}
+
+let reconnectTimer = null;
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connect();
+  }, 2000);
+}
+
+function send(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(obj));
+  }
+}
+
+// ── Apply incoming state ──────────────────────────────────────────────
+function handleState(s) {
+  // --- Mode / status ---
+  const info = MODE_INFO[s.mode] || MODE_INFO.IDLE;
+  const badge = document.getElementById('modeBadge');
+  badge.textContent = info.label;
+  badge.className = 'mode-badge ' + info.cls;
+  document.getElementById('modeDesc').textContent = info.desc;
+
+  // --- Stroke-in-progress hint ---
+  const strokeHint = document.getElementById('strokeHint');
+  const showHint = !!(s.ml_mode && s.stroke_active);
+  strokeHint.classList.toggle('visible', showHint);
+
+  // --- Hand visualizer ---
+  applyHandPose(
+    document.getElementById('writingHandBlock'),
+    'writingHandSvg',
+    document.getElementById('writingPoseName'),
+    s.writing_pose,
+    lastWritingPose
+  );
+  applyHandPose(
+    document.getElementById('controlHandBlock'),
+    'controlHandSvg',
+    document.getElementById('controlPoseName'),
+    s.control_pose,
+    lastControlPose
+  );
+  lastWritingPose = s.writing_pose;
+  lastControlPose = s.control_pose;
+
+  // --- Settings sync (only touch DOM if value differs, avoid jumpy sliders) ---
+  syncWritingHand(s.writing_hand);
+  syncMlMode(s.ml_mode);
+  syncSlider('sensitivitySlider', 'sensitivityValue', s.sensitivity, 1);
+  syncSlider('emaSlider', 'emaValue', s.ema_alpha, 2);
+  syncVirtualBackground(s.virtual_background);
+
+  currentState = s;
+}
+
+// ── Settings: writing hand ──────────────────────────────────────────────
+const handLeftBtn = document.getElementById('handLeftBtn');
+const handRightBtn = document.getElementById('handRightBtn');
+
+function syncWritingHand(hand) {
+  if (hand === currentState.writing_hand && handLeftBtn.classList.contains('active') === (hand === 'Left')) {
+    // still update labels in case of first load
+  }
+  handLeftBtn.classList.toggle('active', hand === 'Left');
+  handRightBtn.classList.toggle('active', hand === 'Right');
+
+  const controlHand = hand === 'Right' ? 'Left' : 'Right';
+  document.getElementById('writingHandLabel').textContent = `Drawing hand (${hand})`;
+  document.getElementById('controlHandLabel').textContent = `Control hand (${controlHand})`;
+}
+
+handLeftBtn.addEventListener('click', () => send({ type: 'set_writing_hand', value: 'Left' }));
+handRightBtn.addEventListener('click', () => send({ type: 'set_writing_hand', value: 'Right' }));
+
+// ── Settings: ml mode ────────────────────────────────────────────────────
+const mlModeToggle = document.getElementById('mlModeToggle');
+const mlGestureGroup = document.getElementById('mlGestureGroup');
+
+function syncMlMode(val) {
+  if (mlModeToggle.checked !== val) mlModeToggle.checked = val;
+  mlGestureGroup.style.display = val ? '' : 'none';
+  document.getElementById('sensitivityMlHint').style.display = val ? '' : 'none';
+}
+
+mlModeToggle.addEventListener('change', () => {
+  send({ type: 'set_ml_mode', value: mlModeToggle.checked });
+});
+
+// ── Settings: sliders ────────────────────────────────────────────────────
+let draggingSlider = null;
+
+function syncSlider(sliderId, valueId, val, decimals) {
+  if (val === undefined || val === null) return;
+  const slider = document.getElementById(sliderId);
+  const valueEl = document.getElementById(valueId);
+  if (draggingSlider === sliderId) return; // don't fight the user mid-drag
+  const rounded = Number(val).toFixed(decimals);
+  if (Number(slider.value).toFixed(decimals) !== rounded) {
+    slider.value = val;
+  }
+  valueEl.textContent = rounded;
+}
+
+const sensitivitySlider = document.getElementById('sensitivitySlider');
+const emaSlider = document.getElementById('emaSlider');
+
+function bindSlider(slider, valueId, msgType, decimals) {
+  const valueEl = document.getElementById(valueId);
+  slider.addEventListener('pointerdown', () => draggingSlider = slider.id);
+  slider.addEventListener('input', () => {
+    valueEl.textContent = Number(slider.value).toFixed(decimals);
+  });
+  const commit = () => {
+    send({ type: msgType, value: Number(slider.value) });
+    draggingSlider = null;
+  };
+  slider.addEventListener('pointerup', commit);
+  slider.addEventListener('change', commit);
+}
+bindSlider(sensitivitySlider, 'sensitivityValue', 'set_sensitivity', 1);
+bindSlider(emaSlider, 'emaValue', 'set_ema', 2);
+
+
+// ── Virtual background ───────────────────────────────────────────────────
+const bgPreview = document.getElementById('bgPreview');
+const bgFileInput = document.getElementById('bgFileInput');
+const removeBgBtn = document.getElementById('removeBgBtn');
+let lastBgPath = undefined;
+
+const VIDEO_EXTS = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
+
+function syncVirtualBackground(path) {
+  if (path === lastBgPath) return;
+  lastBgPath = path;
+  if (path) {
+    const url = `/background_preview?path=${encodeURIComponent(path)}`;
+    const isVideo = VIDEO_EXTS.some(ext => path.toLowerCase().endsWith(ext));
+    if (isVideo) {
+      bgPreview.innerHTML = `<video src="${url}" autoplay loop muted playsinline
+        style="width:100%;height:100%;object-fit:cover;"
+        aria-label="Current virtual background video"></video>`;
+    } else {
+      bgPreview.innerHTML = `<img src="${url}" alt="Current virtual background">`;
+    }
+  } else {
+    bgPreview.textContent = 'No background set — your camera shows normally';
+  }
+}
+
+bgFileInput.addEventListener('change', async () => {
+  const file = bgFileInput.files[0];
+  if (!file) return;
+  bgPreview.textContent = 'Uploading…';
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await fetch('/upload_background', { method: 'POST', body: form });
+    if (!res.ok) {
+      bgPreview.textContent = `Upload failed: server returned ${res.status}`;
+      bgFileInput.value = '';
+      return;
+    }
+    const data = await res.json();
+    if (data.path) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        send({ type: 'set_virtual_background', value: data.path });
+        bgPreview.textContent = 'Background set — loading…';
+      } else {
+        bgPreview.textContent = 'Uploaded but WebSocket is disconnected — reconnect and try again.';
+      }
+    } else {
+      bgPreview.textContent = 'Upload error: no path returned from server.';
+    }
+  } catch (e) {
+    bgPreview.textContent = `Upload error: ${e.message}`;
+  }
+  bgFileInput.value = '';
+});
+
+removeBgBtn.addEventListener('click', () => {
+  send({ type: 'clear_virtual_background' });
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+connect();
+</script>
+</body>
+</html>
