@@ -11,7 +11,7 @@ wait for the target app to process each event. Firing too fast overflows
 the queue and the app drops events, causing missing strokes in replay.
 
 Fix: sleep 1ms between each move call. This gives Windows time to
-dispatch each event to the target app. 1ms * 500 samples = 0.5s for a
+dispatch each event to the target app. 10ms * 500 samples = 5s for a
 typical stroke — fast enough to feel instant, slow enough to not drop events.
 """
 
