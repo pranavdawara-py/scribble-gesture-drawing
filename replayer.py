@@ -1,18 +1,19 @@
-"""Replay recorded strokes as absolute mouse movement. See SPEC_recording.md.
+"""Replay recorded strokes as relative mouse movement. See SPEC_recording.md.
 
 Fix for incomplete shapes / fractional truncation: relative deltas truncate
 floating point remainders (int(1.4) = 1, losing 0.4 on every point), which
-causes the replayed shape to be much smaller. Replay now accumulates the
-floating point deltas internally starting from GetCursorPos(), and uses
-SetCursorPos to place the cursor exactly, keeping the fractional remainders.
+causes the replayed shape to be much smaller. Replay now uses a fractional
+accumulator (rem_x, rem_y) — remainders carry over to the next frame so
+no precision is lost across the stroke.
 
 Key insight: mouse_event() posts to Windows input queue — it does not
 wait for the target app to process each event. Firing too fast overflows
 the queue and the app drops events, causing missing strokes in replay.
 
-Fix: sleep 1ms between each move call. This gives Windows time to
-dispatch each event to the target app. 10ms * 500 samples = 5s for a
-typical stroke — fast enough to feel instant, slow enough to not drop events.
+Fix: sleep 10ms between each move call. This gives Windows time to
+dispatch each event to the target app, and ensures apps running at 60Hz
+sample intermediate cursor positions instead of drawing straight lines.
+10ms * 500 samples = 5s for a typical stroke — slow enough to not drop events.
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ def replay_stroke_from_buffer(
 
     points: list of (dx_px, dy_px) pre-scaled deltas.
     Skips first delta — EMA not warmed up yet, causes large jump.
-    1ms sleep between events.
+    10ms sleep between events.
     """
     if len(points) < 2:
         return
